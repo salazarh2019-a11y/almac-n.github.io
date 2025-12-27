@@ -1,122 +1,341 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario GitHub</title>
+    <title>Gestión de Inventario Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        body { background: #f4f7f6; }
-        .header-app { background: #2c3e50; color: white; padding: 15px; text-align: center; }
-        .producto-card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; cursor: pointer; border-left: 5px solid #3498db; }
-        .detalle-box { display: none; background: #fdfdfd; padding: 15px; border: 1px solid #ddd; border-radius: 0 0 10px 10px; margin-top: -10px; margin-bottom: 10px; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Header */
+        .header-app { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            padding: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .main-options .btn {
+            border-radius: 50px; font-weight: bold; padding: 10px 20px; margin: 0 5px; transition: all 0.3s;
+        }
+        .btn-modo-edicion.active {
+            background-color: #ffc107; color: black; border-color: #ffc107; animation: pulse 1.5s infinite;
+        }
+
+        /* Buscador */
+        .search-area {
+            background: white; padding: 15px; border-bottom: 2px solid #ddd;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .total-badge { font-size: 0.9rem; background: #2c3e50; color: white; padding: 5px 10px; border-radius: 5px; white-space: nowrap; }
+
+        /* Tarjetas */
+        .producto-card {
+            background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s;
+            border-left: 6px solid #2a5298;
+        }
+        .producto-card:active { transform: scale(0.98); }
+        
+        /* Detalles e Imagen (CORREGIDO) */
+        .detalle-box {
+            display: none; background: #f8f9fa; border: 1px solid #e9ecef; border-top: none;
+            margin-top: -15px; margin-bottom: 15px; padding: 20px; border-radius: 0 0 12px 12px;
+        }
+        
+        /* AQUÍ ESTÁ EL CAMBIO DE LA IMAGEN */
+        .product-img-preview {
+            display: block;
+            margin: 0 auto 15px auto; /* Centrado */
+            width: 100%;
+            height: 150px;          /* Altura máxima cómoda */
+            object-fit: contain;    /* Muestra toda la imagen sin zoom excesivo */
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Factura */
+        #factura-content { background: white; padding: 20px; border: 1px dashed #333; }
+        .factura-header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 10px; }
+        .factura-table { width: 100%; font-size: 0.85rem; }
+        .factura-table th { text-align: left; border-bottom: 1px solid #ccc; }
+
+        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);} }
     </style>
 </head>
 <body>
 
-<div class="header-app">
-    <h5>GESTIÓN DE ALMACÉN</h5>
-    <div class="d-flex justify-content-around mt-2">
-        <button class="btn btn-outline-light btn-sm" onclick="mostrarFactura()">REPORTE</button>
-        <button class="btn btn-outline-light btn-sm" onclick="abrirModal()">➕ NUEVO</button>
+<div class="header-app text-center">
+    <h4 class="text-white mb-3">📦 GESTIÓN DE ALMACÉN</h4>
+    <div class="main-options d-flex justify-content-center flex-wrap gap-2">
+        <button class="btn btn-outline-light" onclick="verFactura()">📄 Reporte</button>
+        <button id="btnEdicion" class="btn btn-outline-light btn-modo-edicion" onclick="toggleModoEdicion()">✏️ Edición</button>
+        <button class="btn btn-light text-primary" onclick="abrirModalNuevo()">➕ Añadir</button>
     </div>
 </div>
 
-<div class="container mt-3">
-    <input type="text" id="buscador" class="form-control mb-3" placeholder="🔍 Buscar..." onkeyup="filtrar()">
-    <div id="listaProductos"><p class="text-center">Conectando con la API...</p></div>
+<div class="search-area sticky-top">
+    <span class="total-badge" id="totalProductos">Conectando...</span>
+    <input type="text" id="buscador" class="form-control ms-3" placeholder="🔍 Buscar..." onkeyup="filtrar()">
+</div>
+
+<div class="container mt-3 pb-5" id="listaProductos">
+    <div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>Cargando inventario...</p></div>
 </div>
 
 <div class="modal fade" id="modalAdd" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5>Nuevo Producto</h5></div>
+            <div class="modal-header bg-primary text-white"><h5>Nuevo Producto</h5></div>
             <div class="modal-body">
-                <input type="text" id="nN" class="form-control mb-2" placeholder="Nombre">
-                <input type="number" id="nP" class="form-control mb-2" placeholder="Precio">
-                <input type="text" id="nU" class="form-control mb-2" placeholder="URL Imagen">
-                <button class="btn btn-primary w-100" onclick="enviarNuevo()">Guardar</button>
+                <input type="text" id="newNombre" class="form-control mb-2" placeholder="Nombre">
+                <input type="number" id="newPrecio" class="form-control mb-2" placeholder="Precio">
+                <input type="text" id="newUrl" class="form-control mb-2" placeholder="URL Imagen">
+                <button class="btn btn-primary w-100 mt-3" onclick="guardarNuevo()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEdit" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning"><h5>Editar Producto</h5></div>
+            <div class="modal-body">
+                <div class="text-center mb-2"><img id="editImgPreview" src="" style="height: 100px; object-fit:contain;"></div>
+                <input type="hidden" id="editNombreOriginal">
+                <input type="text" id="editNombre" class="form-control mb-2" placeholder="Nombre">
+                <input type="number" id="editPrecio" class="form-control mb-2" placeholder="Precio">
+                <input type="text" id="editUrl" class="form-control mb-2" placeholder="URL">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success flex-grow-1" onclick="guardarEdicion()">Guardar</button>
+                    <button class="btn btn-danger" onclick="eliminarProducto()">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFactura" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Factura</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body bg-light text-center">
+                <div id="factura-content" class="text-start mx-auto" style="max-width: 500px;">
+                    <div class="factura-header"><h3>REPORTE</h3><p id="fechaFactura">--/--/----</p></div>
+                    <table class="factura-table">
+                        <thead><tr><th>Prod</th><th>$$</th><th>Stock</th><th>Surt</th><th>Vend</th></tr></thead>
+                        <tbody id="cuerpoFactura"></tbody>
+                    </table>
+                    <div class="mt-4 border-top pt-2"><small>Inicio Surtido: <span id="fechaInicioSurtido">-</span></small></div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button class="btn btn-danger" onclick="reiniciarFactura()">Reiniciar</button>
+                <button class="btn btn-success" onclick="descargarFactura()">⬇ Descargar</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-    const URL_API = "https://script.google.com/macros/s/AKfycbzEIHb-NstGJnt3ff-K7YZnjBFL186EgCx5O8q7VpdnMu9FlQGqVNuF8sdu7hdovu2S/exec";
-    
-    let productos = [];
+    // ================= PEGA TU URL DE APPS SCRIPT AQUÍ =================
+    const URL_API = "https://script.google.com/macros/s/AKfycbxIKVMvfZDeNYQBp9qRDQJFaFwu8OXFbmgQ7uQqIt62wGEPd8mQ42qbHGmrJWCJnBXV/exec"; 
+    // ===================================================================
 
-    async function cargar() {
+    let productos = [];
+    let facturaItems = [];
+    let modoEdicion = false;
+    let primeraCarga = true;
+
+    async function cargar(silencioso = false) {
         try {
-            const resp = await fetch(URL_API);
-            productos = await resp.json();
-            renderizar(productos);
-        } catch (e) {
-            document.getElementById('listaProductos').innerHTML = "Error de conexión.";
+            const res = await fetch(URL_API);
+            const data = await res.json();
+            
+            // Transformar datos
+            const nuevosProductos = data.map(p => ({
+                nombre: p[0], stock: p[1], precio: p[2],
+                url: p[3] || 'https://via.placeholder.com/150?text=No+Img',
+                vendidos: p[4], surtidos: p[5], fecha: p[6]
+            }));
+
+            // LÓGICA DE ACTUALIZACIÓN INTELIGENTE
+            if (primeraCarga || nuevosProductos.length !== productos.length) {
+                // Si es la primera vez o cambió la cantidad de productos, renderizamos todo
+                productos = nuevosProductos;
+                renderizar(productos);
+                primeraCarga = false;
+            } else {
+                // Si la cantidad es la misma, solo actualizamos NUMEROS (Stock y Precio)
+                // Esto evita que las imágenes parpadeen o se recarguen
+                productos = nuevosProductos;
+                actualizarNumerosEnPantalla();
+            }
+
+            document.getElementById('totalProductos').innerText = `${productos.length} Items`;
+
+        } catch (error) {
+            console.error("Error cargando:", error);
+            if(primeraCarga) document.getElementById('listaProductos').innerHTML = '<p class="text-center text-danger">Error de conexión</p>';
         }
     }
 
-    function renderizar(datos) {
+    // Esta función actualiza solo el texto sin tocar el HTML de las imágenes
+    function actualizarNumerosEnPantalla() {
+        // Solo actualizamos si no estamos buscando algo específico para evitar saltos raros
+        const busqueda = document.getElementById('buscador').value;
+        if(busqueda !== "") return; 
+
+        productos.forEach((p, i) => {
+            const elStock = document.getElementById(`val-stock-${i}`);
+            const elPrecio = document.getElementById(`val-precio-${i}`);
+            const elHist = document.getElementById(`val-hist-${i}`);
+            
+            if (elStock) elStock.innerText = p.stock + ' unid.';
+            if (elPrecio) elPrecio.innerText = '$' + p.precio;
+            if (elHist) elHist.innerText = `Histórico: Surtidos: ${p.surtidos} | Vendidos: ${p.vendidos}`;
+        });
+    }
+
+    function renderizar(lista) {
+        const container = document.getElementById('listaProductos');
+        // Si hay búsqueda activa, filtramos visualmente
+        const textoBusqueda = document.getElementById('buscador').value.toLowerCase();
+        
         let html = '';
-        datos.forEach((p, i) => {
-            html += `
-                <div class="producto-card" onclick="toggle(${i})">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><b>${p[0]}</b><br><small class="text-success">$${p[2]}</small></div>
-                        <span class="badge bg-primary">${p[1]}</span>
+        lista.forEach((p, i) => {
+            if(p.nombre.toLowerCase().includes(textoBusqueda)) {
+                const enFactura = facturaItems.includes(p.nombre);
+                const btnClass = enFactura ? 'btn-danger' : 'btn-outline-dark';
+                const btnText = enFactura ? 'Quitar' : 'Facturar';
+
+                html += `
+                <div>
+                    <div class="producto-card d-flex justify-content-between align-items-center" onclick="clickProducto(${i})">
+                        <div>
+                            <h5 class="m-0 text-dark">${p.nombre}</h5>
+                            <small class="text-success fw-bold" id="val-precio-${i}">$${p.precio}</small>
+                        </div>
+                        <span class="badge bg-primary fs-6 rounded-pill" id="val-stock-${i}">${p.stock} unid.</span>
                     </div>
-                </div>
-                <div id="det-${i}" class="detalle-box">
-                    <div class="row g-2">
-                        <div class="col-6"><input type="number" id="s-${i}" class="form-control" placeholder="Surtir"></div>
-                        <div class="col-6"><input type="number" id="v-${i}" class="form-control" placeholder="Vendido"></div>
-                        <button class="btn btn-dark btn-sm mt-2" onclick="guardarMov(${i})">Guardar</button>
+
+                    <div id="det-${i}" class="detalle-box">
+                        <img src="${p.url}" class="product-img-preview" alt="Imagen producto">
+                        
+                        <div class="row g-2">
+                            <div class="col-6"><input type="number" id="inp-surtir-${i}" class="form-control" placeholder="Surtir"></div>
+                            <div class="col-6"><input type="number" id="inp-vender-${i}" class="form-control" placeholder="Vender"></div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary flex-grow-1" onclick="guardarMovimiento(${i})">💾 Guardar</button>
+                            <button class="btn ${btnClass} btn-sm" onclick="toggleEnFactura('${p.nombre}', ${i})">${btnText}</button>
+                        </div>
+                        <div class="mt-2 text-muted small" id="val-hist-${i}">
+                            Histórico: Surtidos: ${p.surtidos} | Vendidos: ${p.vendidos}
+                        </div>
                     </div>
                 </div>`;
+            }
         });
-        document.getElementById('listaProductos').innerHTML = html;
+        container.innerHTML = html;
+        
+        // Restaurar estado de acordeón si estaba abierto (opcional simple)
+        // Por simplicidad, el renderizado completo cierra los detalles, 
+        // pero la actualización automática NO ejecuta este renderizar(), así que no cierra nada.
     }
 
-    async function guardarMov(i) {
-        const s = Number(document.getElementById(`s-${i}`).value);
-        const v = Number(document.getElementById(`v-${i}`).value);
-        const data = {
-            accion: "movimiento",
-            nombre: productos[i][0],
-            tipo: s > 0 ? 'surtir' : 'vendido',
-            valor: s > 0 ? s : v
-        };
-        await fetch(URL_API, { method: 'POST', body: JSON.stringify(data) });
-        alert("Actualizado");
-        cargar();
+    // ================= FUNCIONALIDAD =================
+
+    function clickProducto(index) {
+        if (modoEdicion) {
+            const p = productos[index];
+            document.getElementById('editNombreOriginal').value = p.nombre;
+            document.getElementById('editNombre').value = p.nombre;
+            document.getElementById('editPrecio').value = p.precio;
+            document.getElementById('editUrl').value = p.url;
+            document.getElementById('editImgPreview').src = p.url;
+            new bootstrap.Modal(document.getElementById('modalEdit')).show();
+        } else {
+            const el = document.getElementById(`det-${index}`);
+            // Cerrar otros
+            document.querySelectorAll('.detalle-box').forEach(b => { if(b!==el) b.style.display='none'});
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
     }
 
-    async function enviarNuevo() {
-        const data = {
-            accion: "agregar",
-            nombre: document.getElementById('nN').value,
-            precio: document.getElementById('nP').value,
-            url: document.getElementById('nU').value
-        };
-        await fetch(URL_API, { method: 'POST', body: JSON.stringify(data) });
-        location.reload();
+    function filtrar() { renderizar(productos); } // El filtro usa renderizado completo
+    function toggleModoEdicion() {
+        modoEdicion = !modoEdicion;
+        const btn = document.getElementById('btnEdicion');
+        btn.classList.toggle('active');
+        btn.innerText = modoEdicion ? "✏️ MODO EDICIÓN" : "✏️ Edición";
+        document.querySelectorAll('.detalle-box').forEach(b => b.style.display = 'none');
     }
 
-    function toggle(i) {
-        const el = document.getElementById(`det-${i}`);
-        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    // ================= API CALLS =================
+    async function guardarNuevo() {
+        enviarDatos({ accion: "agregar", nombre: document.getElementById('newNombre').value, precio: document.getElementById('newPrecio').value, url: document.getElementById('newUrl').value });
+    }
+    async function guardarMovimiento(i) {
+        const s = document.getElementById(`inp-surtir-${i}`).value;
+        const v = document.getElementById(`inp-vender-${i}`).value;
+        const tipo = s ? 'surtir' : 'vendido';
+        const valor = s ? s : v;
+        if(valor) enviarDatos({ accion: "movimiento", nombre: productos[i].nombre, tipo, valor });
+    }
+    async function guardarEdicion() {
+        enviarDatos({ 
+            accion: "editar", nombreOriginal: document.getElementById('editNombreOriginal').value,
+            nuevoNombre: document.getElementById('editNombre').value, nuevoPrecio: document.getElementById('editPrecio').value, nuevaUrl: document.getElementById('editUrl').value 
+        });
+    }
+    async function eliminarProducto() {
+        if(confirm("¿Eliminar?")) enviarDatos({ accion: "eliminar", nombre: document.getElementById('editNombreOriginal').value });
     }
 
-    function abrirModal() { new bootstrap.Modal(document.getElementById('modalAdd')).show(); }
-    
-    function filtrar() {
-        const t = document.getElementById('buscador').value.toLowerCase();
-        renderizar(productos.filter(p => p[0].toLowerCase().includes(t)));
+    async function enviarDatos(payload) {
+        document.body.style.cursor = 'wait';
+        try {
+            await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
+            alert("Listo!");
+            location.reload(); 
+        } catch (e) { alert("Error"); }
+        document.body.style.cursor = 'default';
     }
 
-    window.onload = cargar;
-    setInterval(cargar, 10000); // Actualiza cada 10 seg
+    // ================= FACTURA =================
+    function toggleEnFactura(nombre, i) {
+        if(facturaItems.includes(nombre)) facturaItems = facturaItems.filter(x => x !== nombre);
+        else facturaItems.push(nombre);
+        renderizar(productos);
+        document.getElementById(`det-${i}`).style.display = 'block';
+    }
+    function verFactura() {
+        const tbody = document.getElementById('cuerpoFactura');
+        tbody.innerHTML = '';
+        const seleccionados = productos.filter(p => facturaItems.includes(p.nombre));
+        seleccionados.forEach(p => {
+            tbody.innerHTML += `<tr><td>${p.nombre}</td><td>$${p.precio}</td><td>${p.stock}</td><td>${p.surtidos}</td><td>${p.vendidos}</td></tr>`;
+            document.getElementById('fechaInicioSurtido').innerText = p.fecha;
+        });
+        document.getElementById('fechaFactura').innerText = new Date().toLocaleDateString();
+        new bootstrap.Modal(document.getElementById('modalFactura')).show();
+    }
+    function reiniciarFactura() { facturaItems=[]; verFactura(); renderizar(productos); }
+    function descargarFactura() {
+        html2canvas(document.getElementById('factura-content')).then(canvas => {
+            const link = document.createElement('a'); link.download = 'reporte.png'; link.href = canvas.toDataURL(); link.click();
+        });
+    }
+    function abrirModalNuevo() { new bootstrap.Modal(document.getElementById('modalAdd')).show(); }
+
+    // ================= INICIO Y AUTO-UPDATE =================
+    window.onload = () => {
+        cargar(); // Carga inicial
+        setInterval(() => cargar(true), 5000); // Actualiza cada 5 segundos
+    };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
