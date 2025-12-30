@@ -3,339 +3,360 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Inventario Pro</title>
+    <title>Gestión Inteligente</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2c3e50; --edit: #e67e22; --rent: #8e44ad; }
+        body { background: #f4f6f7; transition: background 0.3s; }
         
-        /* Header */
-        .header-app { 
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-            padding: 20px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .main-options .btn {
-            border-radius: 50px; font-weight: bold; padding: 10px 20px; margin: 0 5px; transition: all 0.3s;
-        }
-        .btn-modo-edicion.active {
-            background-color: #ffc107; color: black; border-color: #ffc107; animation: pulse 1.5s infinite;
-        }
-
-        /* Buscador */
-        .search-area {
-            background: white; padding: 15px; border-bottom: 2px solid #ddd;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .total-badge { font-size: 0.9rem; background: #2c3e50; color: white; padding: 5px 10px; border-radius: 5px; white-space: nowrap; }
-
-        /* Tarjetas */
-        .producto-card {
-            background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s;
-            border-left: 6px solid #2a5298;
-        }
-        .producto-card:active { transform: scale(0.98); }
+        /* Modos visuales */
+        .mode-normal .navbar { background: var(--primary); }
+        .mode-edit .navbar { background: var(--edit); }
+        .mode-edit body { background: #fdf2e9; }
+        .mode-rent .navbar { background: var(--rent); }
         
-        /* Detalles e Imagen (CORREGIDO) */
-        .detalle-box {
-            display: none; background: #f8f9fa; border: 1px solid #e9ecef; border-top: none;
-            margin-top: -15px; margin-bottom: 15px; padding: 20px; border-radius: 0 0 12px 12px;
-        }
+        .card-prod { background: white; border-radius: 12px; margin-bottom: 10px; padding: 15px; border-left: 5px solid transparent; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card-prod.type-venta { border-left-color: #2ecc71; }
+        .card-prod.type-alquiler { border-left-color: #8e44ad; }
         
-        /* AQUÍ ESTÁ EL CAMBIO DE LA IMAGEN */
-        .product-img-preview {
-            display: block;
-            margin: 0 auto 15px auto; /* Centrado */
-            width: 100%;
-            height: 150px;          /* Altura máxima cómoda */
-            object-fit: contain;    /* Muestra toda la imagen sin zoom excesivo */
-            background-color: white;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-        }
-
-        /* Factura */
-        #factura-content { background: white; padding: 20px; border: 1px dashed #333; }
-        .factura-header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 10px; padding-bottom: 10px; }
-        .factura-table { width: 100%; font-size: 0.85rem; }
-        .factura-table th { text-align: left; border-bottom: 1px solid #ccc; }
-
-        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);} }
+        .detalle-box { display: none; background: #fff; padding: 15px; margin-top: -5px; border-radius: 0 0 12px 12px; border: 1px solid #ddd; border-top:none; margin-bottom: 10px; }
+        .img-prod { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
     </style>
 </head>
-<body>
+<body class="mode-normal">
 
-<div class="header-app text-center">
-    <h4 class="text-white mb-3">📦 GESTIÓN DE ALMACÉN</h4>
-    <div class="main-options d-flex justify-content-center flex-wrap gap-2">
-        <button class="btn btn-outline-light" onclick="verFactura()">📄 Reporte</button>
-        <button id="btnEdicion" class="btn btn-outline-light btn-modo-edicion" onclick="toggleModoEdicion()">✏️ Edición</button>
-        <button class="btn btn-light text-primary" onclick="abrirModalNuevo()">➕ Añadir</button>
+<nav class="navbar navbar-dark sticky-top px-3 shadow-sm">
+    <div class="d-flex align-items-center gap-2">
+        <select id="modeSelector" class="form-select form-select-sm" style="width: 130px;" onchange="cambiarModo()">
+            <option value="normal">🔵 Normal</option>
+            <option value="alquiler">🟣 Alquiler</option>
+            <option value="edicion">🟠 Edición</option>
+        </select>
+        <span class="text-white fw-bold ms-2 d-none d-sm-block">INVENTARIO</span>
     </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-light" onclick="abrirReportes()">📄 Reportes</button>
+        <button class="btn btn-sm btn-light fw-bold" onclick="modalNuevo()">➕ Nuevo</button>
+    </div>
+</nav>
+
+<div class="container mt-3">
+    <input type="text" id="buscador" class="form-control shadow-sm mb-3" placeholder="🔍 Buscar producto..." onkeyup="renderizar()">
+    <div id="contenedorLista" class="pb-5"><div class="text-center mt-5"><div class="spinner-border"></div></div></div>
 </div>
 
-<div class="search-area sticky-top">
-    <span class="total-badge" id="totalProductos">Conectando...</span>
-    <input type="text" id="buscador" class="form-control ms-3" placeholder="🔍 Buscar..." onkeyup="filtrar()">
-</div>
-
-<div class="container mt-3 pb-5" id="listaProductos">
-    <div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>Cargando inventario...</p></div>
-</div>
-
-<div class="modal fade" id="modalAdd" tabindex="-1">
+<div class="modal fade" id="modalForm" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white"><h5>Nuevo Producto</h5></div>
+            <div class="modal-header"><h5 id="modalTitle">Producto</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <input type="text" id="newNombre" class="form-control mb-2" placeholder="Nombre">
-                <input type="number" id="newPrecio" class="form-control mb-2" placeholder="Precio">
-                <input type="text" id="newUrl" class="form-control mb-2" placeholder="URL Imagen">
-                <button class="btn btn-primary w-100 mt-3" onclick="guardarNuevo()">Guardar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalEdit" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning"><h5>Editar Producto</h5></div>
-            <div class="modal-body">
-                <div class="text-center mb-2"><img id="editImgPreview" src="" style="height: 100px; object-fit:contain;"></div>
-                <input type="hidden" id="editNombreOriginal">
-                <input type="text" id="editNombre" class="form-control mb-2" placeholder="Nombre">
-                <input type="number" id="editPrecio" class="form-control mb-2" placeholder="Precio">
-                <input type="text" id="editUrl" class="form-control mb-2" placeholder="URL">
-                <div class="d-flex gap-2">
-                    <button class="btn btn-success flex-grow-1" onclick="guardarEdicion()">Guardar</button>
-                    <button class="btn btn-danger" onclick="eliminarProducto()">Eliminar</button>
+                <input type="hidden" id="prodId">
+                <div class="mb-2"><label>Nombre:</label><input type="text" id="pNombre" class="form-control"></div>
+                <div class="mb-2"><label>Precio:</label><input type="number" id="pPrecio" class="form-control"></div>
+                <div class="mb-2"><label>Tipo:</label>
+                    <select id="pTipo" class="form-select">
+                        <option value="Venta">Venta</option>
+                        <option value="Alquiler">Alquiler</option>
+                    </select>
                 </div>
+                <div class="mb-2"><label>Stock Inicial:</label><input type="number" id="pStock" class="form-control"></div>
+                <div class="mb-3"><label>Imagen URL:</label><input type="text" id="pImg" class="form-control"></div>
+                
+                <div id="divOrden" class="d-none border-top pt-2">
+                    <label>Reordenar (Número de posición):</label>
+                    <input type="number" id="pOrden" class="form-control">
+                </div>
+
+                <button class="btn btn-primary w-100 mt-3" onclick="guardarProducto()">GUARDAR</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalFactura" tabindex="-1">
+<div class="modal fade" id="modalReporte" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><h5>Factura</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body bg-light text-center">
-                <div id="factura-content" class="text-start mx-auto" style="max-width: 500px;">
-                    <div class="factura-header"><h3>REPORTE</h3><p id="fechaFactura">--/--/----</p></div>
-                    <table class="factura-table">
-                        <thead><tr><th>Prod</th><th>$$</th><th>Stock</th><th>Surt</th><th>Vend</th></tr></thead>
-                        <tbody id="cuerpoFactura"></tbody>
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Gestión de Reportes</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="searchCode" class="form-control" placeholder="Ingresa código de remisión...">
+                    <button class="btn btn-outline-secondary" onclick="buscarReporte()">Buscar</button>
+                </div>
+                
+                <div id="areaImpresion" class="border p-3 bg-white">
+                    <div class="d-flex justify-content-between">
+                        <h4>REPORTE DE PRODUCTOS</h4>
+                        <div class="text-end">
+                            <small id="repFecha">Fecha: --/--/----</small><br>
+                            <h5 class="text-danger" id="repCodigo">Borrador</h5>
+                        </div>
+                    </div>
+                    <hr>
+                    <table class="table table-sm text-center" style="font-size:0.9rem">
+                        <thead><tr class="table-secondary"><th>Producto</th><th>Bodega</th><th>Vend</th><th>Surt</th><th>Alq</th></tr></thead>
+                        <tbody id="tablaReporte"></tbody>
                     </table>
-                    <div class="mt-4 border-top pt-2"><small>Inicio Surtido: <span id="fechaInicioSurtido">-</span></small></div>
                 </div>
             </div>
-            <div class="modal-footer justify-content-center">
-                <button class="btn btn-danger" onclick="reiniciarFactura()">Reiniciar</button>
-                <button class="btn btn-success" onclick="descargarFactura()">⬇ Descargar</button>
+            <div class="modal-footer">
+                <button class="btn btn-danger me-auto" onclick="borrarReporte()" id="btnBorrarRep" style="display:none">Eliminar este reporte</button>
+                <button class="btn btn-warning" onclick="limpiarReporte()">Limpiar</button>
+                <button class="btn btn-success" onclick="guardarReporte()">💾 Guardar y Generar Código</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // ================= PEGA TU URL DE APPS SCRIPT AQUÍ =================
-    const URL_API = "https://script.google.com/macros/s/AKfycbxIKVMvfZDeNYQBp9qRDQJFaFwu8OXFbmgQ7uQqIt62wGEPd8mQ42qbHGmrJWCJnBXV/exec"; 
-    // ===================================================================
+    // CONFIGURACIÓN (Rellena esto)
+    const URL_API = "https://script.google.com/macros/s/AKfycbxE-MrUxn4CzH6wkjwe75kUcgRsHc8rCi31mCf6hysDpxjlml8xa8Vw-oQ_STytBXPp/exec"; 
+    const API_KEY = "123456"; // Debe coincidir con Apps Script
 
+    // ESTADO
     let productos = [];
-    let facturaItems = [];
-    let modoEdicion = false;
-    let primeraCarga = true;
+    let itemsReporte = []; // Lista temporal para el reporte
+    let modoActual = "normal"; // normal, alquiler, edicion
 
-    async function cargar(silencioso = false) {
+    // INICIO
+    window.onload = cargarDatos;
+
+    async function api(payload) {
+        payload.key = API_KEY;
         try {
-            const res = await fetch(URL_API);
-            const data = await res.json();
-            
-            // Transformar datos
-            const nuevosProductos = data.map(p => ({
-                nombre: p[0], stock: p[1], precio: p[2],
-                url: p[3] || 'https://via.placeholder.com/150?text=No+Img',
-                vendidos: p[4], surtidos: p[5], fecha: p[6]
-            }));
-
-            // LÓGICA DE ACTUALIZACIÓN INTELIGENTE
-            if (primeraCarga || nuevosProductos.length !== productos.length) {
-                // Si es la primera vez o cambió la cantidad de productos, renderizamos todo
-                productos = nuevosProductos;
-                renderizar(productos);
-                primeraCarga = false;
-            } else {
-                // Si la cantidad es la misma, solo actualizamos NUMEROS (Stock y Precio)
-                // Esto evita que las imágenes parpadeen o se recarguen
-                productos = nuevosProductos;
-                actualizarNumerosEnPantalla();
-            }
-
-            document.getElementById('totalProductos').innerText = `${productos.length} Items`;
-
-        } catch (error) {
-            console.error("Error cargando:", error);
-            if(primeraCarga) document.getElementById('listaProductos').innerHTML = '<p class="text-center text-danger">Error de conexión</p>';
-        }
+            const res = await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
+            return (await res.json()).resultado;
+        } catch(e) { alert("Error de conexión"); return null; }
     }
 
-    // Esta función actualiza solo el texto sin tocar el HTML de las imágenes
-    function actualizarNumerosEnPantalla() {
-        // Solo actualizamos si no estamos buscando algo específico para evitar saltos raros
-        const busqueda = document.getElementById('buscador').value;
-        if(busqueda !== "") return; 
-
-        productos.forEach((p, i) => {
-            const elStock = document.getElementById(`val-stock-${i}`);
-            const elPrecio = document.getElementById(`val-precio-${i}`);
-            const elHist = document.getElementById(`val-hist-${i}`);
-            
-            if (elStock) elStock.innerText = p.stock + ' unid.';
-            if (elPrecio) elPrecio.innerText = '$' + p.precio;
-            if (elHist) elHist.innerText = `Histórico: Surtidos: ${p.surtidos} | Vendidos: ${p.vendidos}`;
-        });
+    async function cargarDatos() {
+        productos = await api({ accion: "obtener" });
+        renderizar();
     }
 
-    function renderizar(lista) {
-        const container = document.getElementById('listaProductos');
-        // Si hay búsqueda activa, filtramos visualmente
-        const textoBusqueda = document.getElementById('buscador').value.toLowerCase();
-        
+    function cambiarModo() {
+        modoActual = document.getElementById('modeSelector').value;
+        document.body.className = `mode-${modoActual}`; // Cambia CSS
+        renderizar();
+    }
+
+    function renderizar() {
+        const txt = document.getElementById('buscador').value.toLowerCase();
         let html = '';
-        lista.forEach((p, i) => {
-            if(p.nombre.toLowerCase().includes(textoBusqueda)) {
-                const enFactura = facturaItems.includes(p.nombre);
-                const btnClass = enFactura ? 'btn-danger' : 'btn-outline-dark';
-                const btnText = enFactura ? 'Quitar' : 'Facturar';
-
-                html += `
-                <div>
-                    <div class="producto-card d-flex justify-content-between align-items-center" onclick="clickProducto(${i})">
-                        <div>
-                            <h5 class="m-0 text-dark">${p.nombre}</h5>
-                            <small class="text-success fw-bold" id="val-precio-${i}">$${p.precio}</small>
-                        </div>
-                        <span class="badge bg-primary fs-6 rounded-pill" id="val-stock-${i}">${p.stock} unid.</span>
-                    </div>
-
-                    <div id="det-${i}" class="detalle-box">
-                        <img src="${p.url}" class="product-img-preview" alt="Imagen producto">
-                        
-                        <div class="row g-2">
-                            <div class="col-6"><input type="number" id="inp-surtir-${i}" class="form-control" placeholder="Surtir"></div>
-                            <div class="col-6"><input type="number" id="inp-vender-${i}" class="form-control" placeholder="Vender"></div>
-                        </div>
-                        <div class="d-flex gap-2 mt-3">
-                            <button class="btn btn-primary flex-grow-1" onclick="guardarMovimiento(${i})">💾 Guardar</button>
-                            <button class="btn ${btnClass} btn-sm" onclick="toggleEnFactura('${p.nombre}', ${i})">${btnText}</button>
-                        </div>
-                        <div class="mt-2 text-muted small" id="val-hist-${i}">
-                            Histórico: Surtidos: ${p.surtidos} | Vendidos: ${p.vendidos}
-                        </div>
-                    </div>
-                </div>`;
-            }
-        });
-        container.innerHTML = html;
         
-        // Restaurar estado de acordeón si estaba abierto (opcional simple)
-        // Por simplicidad, el renderizado completo cierra los detalles, 
-        // pero la actualización automática NO ejecuta este renderizar(), así que no cierra nada.
+        // Filtros según modo
+        let lista = productos.filter(p => {
+            if (!p.nombre.toLowerCase().includes(txt)) return false;
+            if (modoActual === 'normal') return p.tipo === 'Venta';
+            if (modoActual === 'alquiler') return p.tipo === 'Alquiler';
+            return true; // Edición muestra todo
+        });
+
+        if (lista.length === 0) html = '<div class="text-center text-muted mt-4">No hay productos en esta vista</div>';
+
+        lista.forEach(p => {
+            html += `
+            <div class="card-prod type-${p.tipo.toLowerCase()}" onclick="toggleDetalle('${p.id}')">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex gap-3 align-items-center">
+                        ${modoActual === 'edicion' ? `<span class="badge bg-secondary">#${p.orden}</span>` : ''}
+                        <div>
+                            <div class="fw-bold">${p.nombre}</div>
+                            <div class="small text-muted">$${p.precio} | Stock: ${p.stock}</div>
+                        </div>
+                    </div>
+                    ${modoActual === 'alquiler' ? `<span class="badge bg-warning text-dark">Alq: ${p.alquilados}</span>` : ''}
+                    ${modoActual === 'normal' ? `<span class="badge bg-success">Total: ${p.stock}</span>` : ''}
+                </div>
+            </div>
+            
+            <div id="det-${p.id}" class="detalle-box shadow-sm" onclick="event.stopPropagation()">
+                ${generarHTMLDetalle(p)}
+            </div>`;
+        });
+        document.getElementById('contenedorLista').innerHTML = html;
     }
 
-    // ================= FUNCIONALIDAD =================
-
-    function clickProducto(index) {
-        if (modoEdicion) {
-            const p = productos[index];
-            document.getElementById('editNombreOriginal').value = p.nombre;
-            document.getElementById('editNombre').value = p.nombre;
-            document.getElementById('editPrecio').value = p.precio;
-            document.getElementById('editUrl').value = p.url;
-            document.getElementById('editImgPreview').src = p.url;
-            new bootstrap.Modal(document.getElementById('modalEdit')).show();
+    function generarHTMLDetalle(p) {
+        // VISTA EDICIÓN
+        if (modoActual === 'edicion') {
+            return `
+                <div class="text-center mb-2"><img src="${p.imagen}" class="img-prod"></div>
+                <button class="btn btn-warning w-100" onclick="modalEditar('${p.id}')">✏️ EDITAR DETALLES</button>
+            `;
+        }
+        
+        // VISTA NORMAL O ALQUILER
+        let botones = '';
+        if (modoActual === 'normal') {
+            botones = `
+                <div class="col-6"><input type="number" id="in-s-${p.id}" class="form-control" placeholder="Surtir (+)"><button class="btn btn-sm btn-success w-100 mt-1" onclick="movimiento('${p.id}','surtir')">Guardar</button></div>
+                <div class="col-6"><input type="number" id="in-v-${p.id}" class="form-control" placeholder="Vendido (-)"><button class="btn btn-sm btn-danger w-100 mt-1" onclick="movimiento('${p.id}','vender')">Guardar</button></div>
+            `;
         } else {
-            const el = document.getElementById(`det-${index}`);
-            // Cerrar otros
-            document.querySelectorAll('.detalle-box').forEach(b => { if(b!==el) b.style.display='none'});
-            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+            botones = `
+                <div class="col-6"><input type="number" id="in-s-${p.id}" class="form-control" placeholder="Surtir (Bodega)"><button class="btn btn-sm btn-success w-100 mt-1" onclick="movimiento('${p.id}','surtir')">Surtir</button></div>
+                <div class="col-6"><input type="number" id="in-a-${p.id}" class="form-control" placeholder="Alquilar (Salida)"><button class="btn btn-sm btn-warning w-100 mt-1" onclick="movimiento('${p.id}','alquilar')">Alquilar</button></div>
+                <div class="col-12 mt-2"><button class="btn btn-outline-primary w-100" onclick="devolucion('${p.id}')">🔄 Devolución (Regreso a bodega)</button></div>
+            `;
+        }
+
+        return `
+            <div class="d-flex gap-3 mb-2">
+                <img src="${p.imagen}" class="img-prod" onerror="this.src='https://via.placeholder.com/80'">
+                <div class="row w-100 g-1">${botones}</div>
+            </div>
+            <button class="btn btn-outline-dark btn-sm w-100" onclick="agregarAlReporte('${p.id}')">📌 Agregar a Reporte</button>
+        `;
+    }
+
+    // --- LÓGICA DE MOVIMIENTOS ---
+    async function movimiento(id, tipo) {
+        let valId = tipo === 'alquilar' ? `in-a-${id}` : (tipo === 'vender' ? `in-v-${id}` : `in-s-${id}`);
+        let val = Number(document.getElementById(valId).value);
+        if(val <= 0) return alert("Ingresa cantidad válida");
+        
+        if(confirm(`¿Confirmar ${tipo}: ${val}?`)) {
+            await api({ accion: "movimiento", id: id, tipoMov: tipo, valor: val });
+            cargarDatos();
         }
     }
 
-    function filtrar() { renderizar(productos); } // El filtro usa renderizado completo
-    function toggleModoEdicion() {
-        modoEdicion = !modoEdicion;
-        const btn = document.getElementById('btnEdicion');
-        btn.classList.toggle('active');
-        btn.innerText = modoEdicion ? "✏️ MODO EDICIÓN" : "✏️ Edición";
-        document.querySelectorAll('.detalle-box').forEach(b => b.style.display = 'none');
+    function devolucion(id) {
+        let cant = prompt("¿Cuántos productos regresan del alquiler?");
+        if(cant > 0) {
+            api({ accion: "movimiento", id: id, tipoMov: "devolver", valor: Number(cant) }).then(cargarDatos);
+        }
     }
 
-    // ================= API CALLS =================
-    async function guardarNuevo() {
-        enviarDatos({ accion: "agregar", nombre: document.getElementById('newNombre').value, precio: document.getElementById('newPrecio').value, url: document.getElementById('newUrl').value });
+    // --- LÓGICA AGREGAR/EDITAR ---
+    let modalEl;
+    function modalNuevo() {
+        document.getElementById('modalForm').querySelectorAll('input').forEach(i => i.value='');
+        document.getElementById('prodId').value = ''; 
+        document.getElementById('modalTitle').innerText = "Nuevo Producto";
+        document.getElementById('divOrden').classList.add('d-none');
+        modalEl = new bootstrap.Modal(document.getElementById('modalForm'));
+        modalEl.show();
     }
-    async function guardarMovimiento(i) {
-        const s = document.getElementById(`inp-surtir-${i}`).value;
-        const v = document.getElementById(`inp-vender-${i}`).value;
-        const tipo = s ? 'surtir' : 'vendido';
-        const valor = s ? s : v;
-        if(valor) enviarDatos({ accion: "movimiento", nombre: productos[i].nombre, tipo, valor });
+
+    function modalEditar(id) {
+        let p = productos.find(x => x.id == id);
+        document.getElementById('prodId').value = p.id;
+        document.getElementById('pNombre').value = p.nombre;
+        document.getElementById('pPrecio').value = p.precio;
+        document.getElementById('pTipo').value = p.tipo;
+        document.getElementById('pStock').value = p.stock;
+        document.getElementById('pImg').value = p.imagen;
+        document.getElementById('pOrden').value = p.orden;
+        
+        document.getElementById('divOrden').classList.remove('d-none');
+        document.getElementById('modalTitle').innerText = "Editar Producto";
+        modalEl = new bootstrap.Modal(document.getElementById('modalForm'));
+        modalEl.show();
     }
-    async function guardarEdicion() {
-        enviarDatos({ 
-            accion: "editar", nombreOriginal: document.getElementById('editNombreOriginal').value,
-            nuevoNombre: document.getElementById('editNombre').value, nuevoPrecio: document.getElementById('editPrecio').value, nuevaUrl: document.getElementById('editUrl').value 
+
+    async function guardarProducto() {
+        const id = document.getElementById('prodId').value;
+        const datos = {
+            nombre: document.getElementById('pNombre').value,
+            precio: document.getElementById('pPrecio').value,
+            tipo: document.getElementById('pTipo').value,
+            stock: document.getElementById('pStock').value,
+            imagen: document.getElementById('pImg').value
+        };
+
+        if (id) { // Editar
+            datos.id = id;
+            datos.accion = "editar";
+            datos.nuevoOrden = document.getElementById('pOrden').value;
+        } else { // Nuevo
+            datos.accion = "agregar";
+        }
+
+        await api(datos);
+        modalEl.hide();
+        cargarDatos();
+    }
+
+    // --- LÓGICA DE REPORTES ---
+    function agregarAlReporte(id) {
+        let p = productos.find(x => x.id == id);
+        // Evitar duplicados en visualización
+        if(!itemsReporte.find(x => x.id == id)) {
+            itemsReporte.push(p);
+            alert("Agregado al reporte temporal");
+            dibujarTablaReporte();
+        } else {
+            alert("Ya está en el reporte");
+        }
+    }
+
+    function abrirReportes() {
+        dibujarTablaReporte();
+        new bootstrap.Modal(document.getElementById('modalReporte')).show();
+    }
+
+    function dibujarTablaReporte() {
+        let html = '';
+        itemsReporte.forEach(p => {
+            html += `<tr>
+                <td>${p.nombre}</td>
+                <td>${p.stock}</td>
+                <td>${p.vendidos}</td>
+                <td>${p.surtidos}</td>
+                <td>${p.tipo === 'Alquiler' ? p.alquilados : '-'}</td>
+            </tr>`;
         });
-    }
-    async function eliminarProducto() {
-        if(confirm("¿Eliminar?")) enviarDatos({ accion: "eliminar", nombre: document.getElementById('editNombreOriginal').value });
-    }
-
-    async function enviarDatos(payload) {
-        document.body.style.cursor = 'wait';
-        try {
-            await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
-            alert("Listo!");
-            location.reload(); 
-        } catch (e) { alert("Error"); }
-        document.body.style.cursor = 'default';
+        document.getElementById('tablaReporte').innerHTML = html;
+        document.getElementById('repFecha').innerText = "Fecha: " + new Date().toLocaleDateString();
     }
 
-    // ================= FACTURA =================
-    function toggleEnFactura(nombre, i) {
-        if(facturaItems.includes(nombre)) facturaItems = facturaItems.filter(x => x !== nombre);
-        else facturaItems.push(nombre);
-        renderizar(productos);
-        document.getElementById(`det-${i}`).style.display = 'block';
+    async function guardarReporte() {
+        if(itemsReporte.length === 0) return alert("Reporte vacío");
+        const codigo = "REM-" + Math.floor(Math.random() * 10000);
+        await api({ accion: "guardar_reporte", codigo: codigo, items: itemsReporte });
+        document.getElementById('repCodigo').innerText = codigo;
+        alert("Guardado con código: " + codigo);
     }
-    function verFactura() {
-        const tbody = document.getElementById('cuerpoFactura');
-        tbody.innerHTML = '';
-        const seleccionados = productos.filter(p => facturaItems.includes(p.nombre));
-        seleccionados.forEach(p => {
-            tbody.innerHTML += `<tr><td>${p.nombre}</td><td>$${p.precio}</td><td>${p.stock}</td><td>${p.surtidos}</td><td>${p.vendidos}</td></tr>`;
-            document.getElementById('fechaInicioSurtido').innerText = p.fecha;
-        });
-        document.getElementById('fechaFactura').innerText = new Date().toLocaleDateString();
-        new bootstrap.Modal(document.getElementById('modalFactura')).show();
-    }
-    function reiniciarFactura() { facturaItems=[]; verFactura(); renderizar(productos); }
-    function descargarFactura() {
-        html2canvas(document.getElementById('factura-content')).then(canvas => {
-            const link = document.createElement('a'); link.download = 'reporte.png'; link.href = canvas.toDataURL(); link.click();
-        });
-    }
-    function abrirModalNuevo() { new bootstrap.Modal(document.getElementById('modalAdd')).show(); }
 
-    // ================= INICIO Y AUTO-UPDATE =================
-    window.onload = () => {
-        cargar(); // Carga inicial
-        setInterval(() => cargar(true), 5000); // Actualiza cada 5 segundos
-    };
+    async function buscarReporte() {
+        const cod = document.getElementById('searchCode').value;
+        const res = await api({ accion: "buscar_reporte", codigo: cod });
+        if(res.encontrado) {
+            itemsReporte = res.items;
+            document.getElementById('repCodigo').innerText = cod;
+            document.getElementById('btnBorrarRep').style.display = 'block';
+            dibujarTablaReporte();
+        } else {
+            alert("Código no encontrado");
+        }
+    }
+
+    async function borrarReporte() {
+        const cod = document.getElementById('repCodigo').innerText;
+        if(confirm("Eliminar reporte " + cod)) {
+            await api({ accion: "borrar_reporte", codigo: cod });
+            limpiarReporte();
+        }
+    }
+
+    function limpiarReporte() {
+        itemsReporte = [];
+        document.getElementById('repCodigo').innerText = "Borrador";
+        document.getElementById('searchCode').value = "";
+        document.getElementById('btnBorrarRep').style.display = 'none';
+        dibujarTablaReporte();
+    }
+
+    function toggleDetalle(id) {
+        const el = document.getElementById(`det-${id}`);
+        const actual = el.style.display;
+        document.querySelectorAll('.detalle-box').forEach(d => d.style.display='none');
+        el.style.display = actual === 'block' ? 'none' : 'block';
+    }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
