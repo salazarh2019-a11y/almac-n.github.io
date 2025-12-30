@@ -3,71 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Inteligente</title>
+    <title>Gestión Almacén Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root { --primary: #2c3e50; --edit: #e67e22; --rent: #8e44ad; }
-        body { background: #f4f6f7; transition: background 0.3s; }
+        /* FONDO GRIS CON TEXTURA DE PUNTOS */
+        body { 
+            background-color: #e9ecef; 
+            background-image: radial-gradient(#ced4da 0.5px, transparent 0.5px);
+            background-size: 15px 15px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            transition: background 0.3s ease;
+            min-height: 100vh;
+        }
+
+        /* COLORES DE MODOS */
+        .navbar { transition: background-color 0.4s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         
-        /* Modos visuales */
-        .mode-normal .navbar { background: var(--primary); }
-        .mode-edit .navbar { background: var(--edit); }
-        .mode-edit body { background: #fdf2e9; }
-        .mode-rent .navbar { background: var(--rent); }
+        body[data-mode="normal"] .navbar { background-color: #2c3e50 !important; }
+        body[data-mode="alquiler"] .navbar { background-color: #6a1b9a !important; }
+        body[data-mode="edicion"] .navbar { background-color: #d35400 !important; }
+
+        /* VARIACIÓN DE FONDO SEGÚN MODO PARA NO PERDER CONTRASTE */
+        body[data-mode="alquiler"] { background-color: #f3e5f5; }
+        body[data-mode="edicion"] { background-color: #fff3e0; }
+
+        /* TARJETAS BLANCAS RESALTADAS */
+        .card-prod { 
+            background: #ffffff; 
+            border-radius: 14px; 
+            margin-bottom: 12px; 
+            padding: 16px; 
+            border: none;
+            border-left: 8px solid #adb5bd; 
+            cursor: pointer; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07); 
+            transition: all 0.2s ease;
+        }
+        .card-prod:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .card-prod:active { transform: scale(0.97); }
         
-        .card-prod { background: white; border-radius: 12px; margin-bottom: 10px; padding: 15px; border-left: 5px solid transparent; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card-prod.type-venta { border-left-color: #2ecc71; }
-        .card-prod.type-alquiler { border-left-color: #8e44ad; }
+        .type-venta { border-left-color: #27ae60 !important; }
+        .type-alquiler { border-left-color: #8e44ad !important; }
+
+        /* DETALLES */
+        .detalle-box { 
+            display: none; 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 0 0 14px 14px; 
+            margin-top: -12px; 
+            margin-bottom: 15px; 
+            border: 1px solid #dee2e6; 
+            border-top: none;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+        }
+
+        .img-prod { 
+            width: 75px; height: 75px; 
+            object-fit: cover; 
+            border-radius: 10px; 
+            background: #f8f9fa;
+            border: 1px solid #eee;
+        }
+
+        /* BOTONES Y CARGA */
+        #loadingIndicator { 
+            position: fixed; bottom: 25px; right: 25px; 
+            background: #212529; color: white; 
+            padding: 12px 24px; border-radius: 50px; 
+            display: none; z-index: 9999; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-size: 0.85rem; font-weight: bold;
+        }
         
-        .detalle-box { display: none; background: #fff; padding: 15px; margin-top: -5px; border-radius: 0 0 12px 12px; border: 1px solid #ddd; border-top:none; margin-bottom: 10px; }
-        .img-prod { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+        .btn-guardando { pointer-events: none; opacity: 0.7; }
     </style>
 </head>
-<body class="mode-normal">
+<body data-mode="normal">
 
-<nav class="navbar navbar-dark sticky-top px-3 shadow-sm">
+<div id="loadingIndicator">Sincronizando...</div>
+
+<nav class="navbar navbar-dark sticky-top px-3">
     <div class="d-flex align-items-center gap-2">
-        <select id="modeSelector" class="form-select form-select-sm" style="width: 130px;" onchange="cambiarModo()">
-            <option value="normal">🔵 Normal</option>
-            <option value="alquiler">🟣 Alquiler</option>
-            <option value="edicion">🟠 Edición</option>
+        <select id="modeSelector" class="form-select form-select-sm fw-bold border-0 shadow-sm" style="width: 145px;" onchange="cambiarModo()">
+            <option value="normal">🔵 Modo Venta</option>
+            <option value="alquiler">🟣 Modo Alquiler</option>
+            <option value="edicion">🟠 Modo Edición</option>
         </select>
-        <span class="text-white fw-bold ms-2 d-none d-sm-block">INVENTARIO</span>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-light" onclick="abrirReportes()">📄 Reportes</button>
-        <button class="btn btn-sm btn-light fw-bold" onclick="modalNuevo()">➕ Nuevo</button>
+        <button class="btn btn-sm btn-outline-light border-0 fw-bold" onclick="abrirReportes()">REPORTES</button>
+        <button class="btn btn-sm btn-light fw-bold px-3 shadow-sm" onclick="modalNuevo()">+ NUEVO</button>
     </div>
 </nav>
 
-<div class="container mt-3">
-    <input type="text" id="buscador" class="form-control shadow-sm mb-3" placeholder="🔍 Buscar producto..." onkeyup="renderizar()">
-    <div id="contenedorLista" class="pb-5"><div class="text-center mt-5"><div class="spinner-border"></div></div></div>
+<div class="container mt-4">
+    <input type="text" id="buscador" class="form-control form-control-lg shadow-sm mb-4 border-0" placeholder="🔍 Buscar en el inventario..." onkeyup="renderizar()">
+    <div id="contenedorLista">
+        <div class="text-center mt-5"><div class="spinner-border text-primary"></div></div>
+    </div>
 </div>
 
-<div class="modal fade" id="modalForm" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header"><h5 id="modalTitle">Producto</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
+<div class="modal fade" id="modalForm" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="modalTitle">Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
                 <input type="hidden" id="prodId">
-                <div class="mb-2"><label>Nombre:</label><input type="text" id="pNombre" class="form-control"></div>
-                <div class="mb-2"><label>Precio:</label><input type="number" id="pPrecio" class="form-control"></div>
-                <div class="mb-2"><label>Tipo:</label>
-                    <select id="pTipo" class="form-select">
-                        <option value="Venta">Venta</option>
-                        <option value="Alquiler">Alquiler</option>
-                    </select>
+                <div class="mb-3"><label class="small fw-bold text-muted">NOMBRE</label><input type="text" id="pNombre" class="form-control border-2"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="small fw-bold text-muted">PRECIO</label><input type="number" id="pPrecio" class="form-control border-2"></div>
+                    <div class="col-6"><label class="small fw-bold text-muted">CATEGORÍA</label>
+                        <select id="pTipo" class="form-select border-2">
+                            <option value="Venta">Venta</option>
+                            <option value="Alquiler">Alquiler</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="mb-2"><label>Stock Inicial:</label><input type="number" id="pStock" class="form-control"></div>
-                <div class="mb-3"><label>Imagen URL:</label><input type="text" id="pImg" class="form-control"></div>
+                <div class="mb-3"><label class="small fw-bold text-muted">STOCK INICIAL</label><input type="number" id="pStock" class="form-control border-2"></div>
+                <div class="mb-3"><label class="small fw-bold text-muted">URL IMAGEN</label><input type="text" id="pImg" class="form-control border-2"></div>
                 
-                <div id="divOrden" class="d-none border-top pt-2">
-                    <label>Reordenar (Número de posición):</label>
-                    <input type="number" id="pOrden" class="form-control">
+                <div id="divExtraEdicion" class="d-none border-top pt-3 mt-4">
+                    <div class="mb-3"><label class="small fw-bold text-danger">POSICIÓN EN LISTA</label><input type="number" id="pOrden" class="form-control border-danger"></div>
+                    <button class="btn btn-danger w-100 fw-bold" onclick="borrarProducto()">🗑️ ELIMINAR PERMANENTEMENTE</button>
                 </div>
 
-                <button class="btn btn-primary w-100 mt-3" onclick="guardarProducto()">GUARDAR</button>
+                <button class="btn btn-primary btn-lg w-100 mt-4 fw-bold" id="btnGuardarProd" onclick="guardarProducto()">GUARDAR DATOS</button>
             </div>
         </div>
     </div>
@@ -75,175 +139,108 @@
 
 <div class="modal fade" id="modalReporte" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title">Gestión de Reportes</h5>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="input-group mb-3">
-                    <input type="text" id="searchCode" class="form-control" placeholder="Ingresa código de remisión...">
-                    <button class="btn btn-outline-secondary" onclick="buscarReporte()">Buscar</button>
-                </div>
-                
-                <div id="areaImpresion" class="border p-3 bg-white">
-                    <div class="d-flex justify-content-between">
-                        <h4>REPORTE DE PRODUCTOS</h4>
-                        <div class="text-end">
-                            <small id="repFecha">Fecha: --/--/----</small><br>
-                            <h5 class="text-danger" id="repCodigo">Borrador</h5>
-                        </div>
-                    </div>
-                    <hr>
-                    <table class="table table-sm text-center" style="font-size:0.9rem">
-                        <thead><tr class="table-secondary"><th>Producto</th><th>Bodega</th><th>Vend</th><th>Surt</th><th>Alq</th></tr></thead>
-                        <tbody id="tablaReporte"></tbody>
-                    </table>
+        <div class="modal-content border-0">
+            <div class="modal-header bg-dark text-white"><h5>Reportes y Remisiones</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <div class="input-group mb-4 shadow-sm"><input type="text" id="searchCode" class="form-control border-0" placeholder="Código de remisión..."><button class="btn btn-secondary px-4" onclick="buscarReporte()">Buscar</button></div>
+                <div class="bg-white border rounded p-4" id="printArea">
+                    <div class="d-flex justify-content-between mb-3"><h4 class="fw-bold" id="repCodigo">BORRADOR</h4><small id="repFecha" class="text-muted"></small></div>
+                    <table class="table table-hover text-center"><thead class="table-light"><tr><th>Producto</th><th>Total</th><th>Movimientos</th></tr></thead><tbody id="tablaReporte"></tbody></table>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-danger me-auto" onclick="borrarReporte()" id="btnBorrarRep" style="display:none">Eliminar este reporte</button>
-                <button class="btn btn-warning" onclick="limpiarReporte()">Limpiar</button>
-                <button class="btn btn-success" onclick="guardarReporte()">💾 Guardar y Generar Código</button>
+                <button class="btn btn-outline-danger btn-sm me-auto" onclick="borrarReporte()" id="btnBorrarRep" style="display:none">Eliminar</button>
+                <button class="btn btn-success fw-bold" onclick="guardarReporte()">💾 GENERAR REPORTE</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // CONFIGURACIÓN (Rellena esto)
-    const URL_API = "https://script.google.com/macros/s/AKfycbxE-MrUxn4CzH6wkjwe75kUcgRsHc8rCi31mCf6hysDpxjlml8xa8Vw-oQ_STytBXPp/exec"; 
-    const API_KEY = "123456"; // Debe coincidir con Apps Script
+    // --- PEGA AQUÍ TU URL Y KEY ---
+    const URL_API = "https://script.google.com/macros/s/AKfycbzW70dkjZaS_xt4-6uEtRQUqvth3q2xPf67UFQesAZP-dHUo8BcA0y7Vd9udr8xt-mx/exec"; 
+    const API_KEY = "123456"; 
 
-    // ESTADO
     let productos = [];
-    let itemsReporte = []; // Lista temporal para el reporte
-    let modoActual = "normal"; // normal, alquiler, edicion
+    let itemsReporte = [];
+    let modoActual = "normal";
+    let isSaving = false;
 
-    // INICIO
-    window.onload = cargarDatos;
+    window.onload = () => { cargarDatos(); setInterval(() => { if(!document.querySelector('.modal.show')) cargarDatos(true); }, 7000); };
 
-    async function api(payload) {
-        payload.key = API_KEY;
-        try {
-            const res = await fetch(URL_API, { method: 'POST', body: JSON.stringify(payload) });
-            return (await res.json()).resultado;
-        } catch(e) { alert("Error de conexión"); return null; }
-    }
+    async function api(p) { p.key = API_KEY; try { const r = await fetch(URL_API, { method: 'POST', body: JSON.stringify(p) }); return (await r.json()).resultado; } catch(e) { return null; } }
 
-    async function cargarDatos() {
-        productos = await api({ accion: "obtener" });
-        renderizar();
+    async function cargarDatos(silence = false) {
+        if(silence) document.getElementById('loadingIndicator').style.display = 'block';
+        const d = await api({ accion: "obtener" });
+        if(d && JSON.stringify(d) !== JSON.stringify(productos)) { productos = d; renderizar(); }
+        document.getElementById('loadingIndicator').style.display = 'none';
     }
 
     function cambiarModo() {
         modoActual = document.getElementById('modeSelector').value;
-        document.body.className = `mode-${modoActual}`; // Cambia CSS
+        document.body.setAttribute('data-mode', modoActual);
         renderizar();
     }
 
     function renderizar() {
-        const txt = document.getElementById('buscador').value.toLowerCase();
+        const t = document.getElementById('buscador').value.toLowerCase();
         let html = '';
-        
-        // Filtros según modo
         let lista = productos.filter(p => {
-            if (!p.nombre.toLowerCase().includes(txt)) return false;
+            if (!p.nombre.toLowerCase().includes(t)) return false;
             if (modoActual === 'normal') return p.tipo === 'Venta';
             if (modoActual === 'alquiler') return p.tipo === 'Alquiler';
-            return true; // Edición muestra todo
+            return true;
         });
 
-        if (lista.length === 0) html = '<div class="text-center text-muted mt-4">No hay productos en esta vista</div>';
-
         lista.forEach(p => {
+            let badge = modoActual === 'alquiler' ? `<span class="badge bg-warning text-dark me-2">Alquilados: ${p.alquilados}</span>` : '';
+            let orden = modoActual === 'edicion' ? `<span class="badge bg-dark me-2">POS: ${p.orden}</span>` : '';
+
             html += `
             <div class="card-prod type-${p.tipo.toLowerCase()}" onclick="toggleDetalle('${p.id}')">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex gap-3 align-items-center">
-                        ${modoActual === 'edicion' ? `<span class="badge bg-secondary">#${p.orden}</span>` : ''}
-                        <div>
-                            <div class="fw-bold">${p.nombre}</div>
-                            <div class="small text-muted">$${p.precio} | Stock: ${p.stock}</div>
-                        </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="${p.imagen}" class="img-prod" onerror="this.src='https://via.placeholder.com/70'">
+                        <div><div class="fw-bold text-dark">${p.nombre}</div><div class="text-success small fw-bold">$${p.precio}</div></div>
                     </div>
-                    ${modoActual === 'alquiler' ? `<span class="badge bg-warning text-dark">Alq: ${p.alquilados}</span>` : ''}
-                    ${modoActual === 'normal' ? `<span class="badge bg-success">Total: ${p.stock}</span>` : ''}
+                    <div class="text-end">${orden}${badge}<span class="badge bg-secondary">${p.stock} Disp.</span></div>
                 </div>
             </div>
-            
-            <div id="det-${p.id}" class="detalle-box shadow-sm" onclick="event.stopPropagation()">
-                ${generarHTMLDetalle(p)}
+            <div id="det-${p.id}" class="detalle-box shadow-sm">
+                ${generarDetalle(p)}
             </div>`;
         });
-        document.getElementById('contenedorLista').innerHTML = html;
+        document.getElementById('contenedorLista').innerHTML = html || '<div class="text-center p-5 text-muted">No hay resultados</div>';
     }
 
-    function generarHTMLDetalle(p) {
-        // VISTA EDICIÓN
-        if (modoActual === 'edicion') {
-            return `
-                <div class="text-center mb-2"><img src="${p.imagen}" class="img-prod"></div>
-                <button class="btn btn-warning w-100" onclick="modalEditar('${p.id}')">✏️ EDITAR DETALLES</button>
-            `;
-        }
+    function generarDetalle(p) {
+        if(modoActual === 'edicion') return `<button class="btn btn-warning w-100 fw-bold shadow-sm" onclick="modalEditar('${p.id}')">CONFIGURAR PRODUCTO</button>`;
         
-        // VISTA NORMAL O ALQUILER
-        let botones = '';
-        if (modoActual === 'normal') {
-            botones = `
-                <div class="col-6"><input type="number" id="in-s-${p.id}" class="form-control" placeholder="Surtir (+)"><button class="btn btn-sm btn-success w-100 mt-1" onclick="movimiento('${p.id}','surtir')">Guardar</button></div>
-                <div class="col-6"><input type="number" id="in-v-${p.id}" class="form-control" placeholder="Vendido (-)"><button class="btn btn-sm btn-danger w-100 mt-1" onclick="movimiento('${p.id}','vender')">Guardar</button></div>
-            `;
-        } else {
-            botones = `
-                <div class="col-6"><input type="number" id="in-s-${p.id}" class="form-control" placeholder="Surtir (Bodega)"><button class="btn btn-sm btn-success w-100 mt-1" onclick="movimiento('${p.id}','surtir')">Surtir</button></div>
-                <div class="col-6"><input type="number" id="in-a-${p.id}" class="form-control" placeholder="Alquilar (Salida)"><button class="btn btn-sm btn-warning w-100 mt-1" onclick="movimiento('${p.id}','alquilar')">Alquilar</button></div>
-                <div class="col-12 mt-2"><button class="btn btn-outline-primary w-100" onclick="devolucion('${p.id}')">🔄 Devolución (Regreso a bodega)</button></div>
-            `;
-        }
+        let inputs = modoActual === 'normal' ? 
+            `<div class="col-6"><input type="number" id="s-${p.id}" class="form-control" placeholder="Surtir"><button class="btn btn-success w-100 mt-2 btn-sm" onclick="movimiento('${p.id}','surtir')">Surtir</button></div>
+             <div class="col-6"><input type="number" id="v-${p.id}" class="form-control" placeholder="Vender"><button class="btn btn-danger w-100 mt-2 btn-sm" onclick="movimiento('${p.id}','vender')">Vendido</button></div>` :
+            `<div class="col-4 px-1"><input type="number" id="s-${p.id}" class="form-control" placeholder="Entra"><button class="btn btn-success w-100 mt-2 btn-sm" onclick="movimiento('${p.id}','surtir')">Surtir</button></div>
+             <div class="col-4 px-1"><input type="number" id="a-${p.id}" class="form-control" placeholder="Sale"><button class="btn btn-warning w-100 mt-2 btn-sm" onclick="movimiento('${p.id}','alquilar')">Alquilar</button></div>
+             <div class="col-4 px-1"><button class="btn btn-outline-primary w-100 h-100 btn-sm" onclick="devolucion('${p.id}')">Retorno<br>Alquiler</button></div>`;
 
-        return `
-            <div class="d-flex gap-3 mb-2">
-                <img src="${p.imagen}" class="img-prod" onerror="this.src='https://via.placeholder.com/80'">
-                <div class="row w-100 g-1">${botones}</div>
-            </div>
-            <button class="btn btn-outline-dark btn-sm w-100" onclick="agregarAlReporte('${p.id}')">📌 Agregar a Reporte</button>
-        `;
+        return `<div class="row g-2">${inputs}</div><button class="btn btn-light btn-sm w-100 mt-3 border" onclick="agregarAlReporte('${p.id}')">+ Reportar</button>`;
     }
 
-    // --- LÓGICA DE MOVIMIENTOS ---
     async function movimiento(id, tipo) {
-        let valId = tipo === 'alquilar' ? `in-a-${id}` : (tipo === 'vender' ? `in-v-${id}` : `in-s-${id}`);
-        let val = Number(document.getElementById(valId).value);
-        if(val <= 0) return alert("Ingresa cantidad válida");
-        
-        if(confirm(`¿Confirmar ${tipo}: ${val}?`)) {
-            await api({ accion: "movimiento", id: id, tipoMov: tipo, valor: val });
-            cargarDatos();
-        }
+        const inp = document.getElementById(`${tipo === 'alquilar'?'a':(tipo==='vender'?'v':'s')}-${id}`);
+        const v = Number(inp.value); if(v <= 0) return;
+        inp.disabled = true;
+        await api({ accion: "movimiento", id: id, tipoMov: tipo, valor: v });
+        cargarDatos(true);
     }
 
-    function devolucion(id) {
-        let cant = prompt("¿Cuántos productos regresan del alquiler?");
-        if(cant > 0) {
-            api({ accion: "movimiento", id: id, tipoMov: "devolver", valor: Number(cant) }).then(cargarDatos);
-        }
-    }
+    function devolucion(id) { let c = prompt("¿Cantidad devuelta?"); if(c > 0) api({ accion: "movimiento", id: id, tipoMov: "devolver", valor: Number(c) }).then(() => cargarDatos(true)); }
 
-    // --- LÓGICA AGREGAR/EDITAR ---
-    let modalEl;
-    function modalNuevo() {
-        document.getElementById('modalForm').querySelectorAll('input').forEach(i => i.value='');
-        document.getElementById('prodId').value = ''; 
-        document.getElementById('modalTitle').innerText = "Nuevo Producto";
-        document.getElementById('divOrden').classList.add('d-none');
-        modalEl = new bootstrap.Modal(document.getElementById('modalForm'));
-        modalEl.show();
-    }
+    function modalNuevo() { resetForm(); document.getElementById('divExtraEdicion').classList.add('d-none'); document.getElementById('modalTitle').innerText="Nuevo Producto"; new bootstrap.Modal(document.getElementById('modalForm')).show(); }
 
     function modalEditar(id) {
-        let p = productos.find(x => x.id == id);
+        resetForm(); let p = productos.find(x => x.id == id);
         document.getElementById('prodId').value = p.id;
         document.getElementById('pNombre').value = p.nombre;
         document.getElementById('pPrecio').value = p.precio;
@@ -251,112 +248,53 @@
         document.getElementById('pStock').value = p.stock;
         document.getElementById('pImg').value = p.imagen;
         document.getElementById('pOrden').value = p.orden;
-        
-        document.getElementById('divOrden').classList.remove('d-none');
-        document.getElementById('modalTitle').innerText = "Editar Producto";
-        modalEl = new bootstrap.Modal(document.getElementById('modalForm'));
-        modalEl.show();
+        document.getElementById('divExtraEdicion').classList.remove('d-none');
+        document.getElementById('modalTitle').innerText="Editar Detalles";
+        new bootstrap.Modal(document.getElementById('modalForm')).show();
+    }
+
+    function resetForm() { 
+        document.getElementById('prodId').value=''; 
+        document.getElementById('pNombre').value=''; 
+        document.getElementById('btnGuardarProd').disabled = false;
+        document.getElementById('btnGuardarProd').innerText = "GUARDAR DATOS";
     }
 
     async function guardarProducto() {
-        const id = document.getElementById('prodId').value;
-        const datos = {
-            nombre: document.getElementById('pNombre').value,
-            precio: document.getElementById('pPrecio').value,
+        if(isSaving) return;
+        const n = document.getElementById('pNombre').value; if(!n) return;
+        isSaving = true;
+        const b = document.getElementById('btnGuardarProd');
+        b.disabled = true; b.innerText = "⏳ GUARDANDO...";
+
+        const d = {
+            accion: document.getElementById('prodId').value ? "editar" : "agregar",
+            id: document.getElementById('prodId').value,
+            nombre: n, precio: document.getElementById('pPrecio').value,
             tipo: document.getElementById('pTipo').value,
             stock: document.getElementById('pStock').value,
-            imagen: document.getElementById('pImg').value
+            imagen: document.getElementById('pImg').value,
+            nuevoOrden: document.getElementById('pOrden').value
         };
 
-        if (id) { // Editar
-            datos.id = id;
-            datos.accion = "editar";
-            datos.nuevoOrden = document.getElementById('pOrden').value;
-        } else { // Nuevo
-            datos.accion = "agregar";
-        }
-
-        await api(datos);
-        modalEl.hide();
-        cargarDatos();
+        await api(d);
+        bootstrap.Modal.getInstance(document.getElementById('modalForm')).hide();
+        isSaving = false;
+        cargarDatos(true);
     }
 
-    // --- LÓGICA DE REPORTES ---
-    function agregarAlReporte(id) {
-        let p = productos.find(x => x.id == id);
-        // Evitar duplicados en visualización
-        if(!itemsReporte.find(x => x.id == id)) {
-            itemsReporte.push(p);
-            alert("Agregado al reporte temporal");
-            dibujarTablaReporte();
-        } else {
-            alert("Ya está en el reporte");
-        }
+    async function borrarProducto() { if(confirm("¿Eliminar para siempre?")) { await api({ accion: "borrar", id: document.getElementById('prodId').value }); bootstrap.Modal.getInstance(document.getElementById('modalForm')).hide(); cargarDatos(true); } }
+
+    function toggleDetalle(id) { 
+        document.querySelectorAll('.detalle-box').forEach(x => { if(x.id !== `det-${id}`) x.style.display='none'; });
+        const e = document.getElementById(`det-${id}`); e.style.display = e.style.display==='block'?'none':'block'; 
     }
 
-    function abrirReportes() {
-        dibujarTablaReporte();
-        new bootstrap.Modal(document.getElementById('modalReporte')).show();
-    }
-
-    function dibujarTablaReporte() {
-        let html = '';
-        itemsReporte.forEach(p => {
-            html += `<tr>
-                <td>${p.nombre}</td>
-                <td>${p.stock}</td>
-                <td>${p.vendidos}</td>
-                <td>${p.surtidos}</td>
-                <td>${p.tipo === 'Alquiler' ? p.alquilados : '-'}</td>
-            </tr>`;
-        });
-        document.getElementById('tablaReporte').innerHTML = html;
-        document.getElementById('repFecha').innerText = "Fecha: " + new Date().toLocaleDateString();
-    }
-
-    async function guardarReporte() {
-        if(itemsReporte.length === 0) return alert("Reporte vacío");
-        const codigo = "REM-" + Math.floor(Math.random() * 10000);
-        await api({ accion: "guardar_reporte", codigo: codigo, items: itemsReporte });
-        document.getElementById('repCodigo').innerText = codigo;
-        alert("Guardado con código: " + codigo);
-    }
-
-    async function buscarReporte() {
-        const cod = document.getElementById('searchCode').value;
-        const res = await api({ accion: "buscar_reporte", codigo: cod });
-        if(res.encontrado) {
-            itemsReporte = res.items;
-            document.getElementById('repCodigo').innerText = cod;
-            document.getElementById('btnBorrarRep').style.display = 'block';
-            dibujarTablaReporte();
-        } else {
-            alert("Código no encontrado");
-        }
-    }
-
-    async function borrarReporte() {
-        const cod = document.getElementById('repCodigo').innerText;
-        if(confirm("Eliminar reporte " + cod)) {
-            await api({ accion: "borrar_reporte", codigo: cod });
-            limpiarReporte();
-        }
-    }
-
-    function limpiarReporte() {
-        itemsReporte = [];
-        document.getElementById('repCodigo').innerText = "Borrador";
-        document.getElementById('searchCode').value = "";
-        document.getElementById('btnBorrarRep').style.display = 'none';
-        dibujarTablaReporte();
-    }
-
-    function toggleDetalle(id) {
-        const el = document.getElementById(`det-${id}`);
-        const actual = el.style.display;
-        document.querySelectorAll('.detalle-box').forEach(d => d.style.display='none');
-        el.style.display = actual === 'block' ? 'none' : 'block';
-    }
+    // Reportes (Funciones básicas)
+    function agregarAlReporte(id) { let p = productos.find(x => x.id == id); if(!itemsReporte.find(x => x.id==id)){ itemsReporte.push(p); alert("Añadido al reporte"); } }
+    function abrirReportes() { dibujarRep(); new bootstrap.Modal(document.getElementById('modalReporte')).show(); }
+    function dibujarRep() { let h=''; itemsReporte.forEach(p=>{ h+=`<tr><td>${p.nombre}</td><td>${p.stock}</td><td>V:${p.vendidos} / S:${p.surtidos}</td></tr>`; }); document.getElementById('tablaReporte').innerHTML=h; document.getElementById('repFecha').innerText=new Date().toLocaleDateString(); }
+    async function guardarReporte() { if(itemsReporte.length===0) return; const c="REM-"+Math.floor(Math.random()*99999); await api({accion:"guardar_reporte", codigo:c, items:itemsReporte}); document.getElementById('repCodigo').innerText=c; alert("Código: "+c); }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
